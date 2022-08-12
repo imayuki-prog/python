@@ -4,7 +4,8 @@ import random
 from hangman_art import stages 
 from hangman_art import logo
 from hangman_words import word_list
-
+#or import hangman_art
+#hangman_art.logo
 
 print("Welcome to")
 print(logo)
@@ -32,6 +33,8 @@ while not end_of_game:
     print("")
     print(display)
     guess = input("[Guess a letter]: ").lower()
+    import os
+    os.system("clear")
   
     if guess in player_chosen_words:
       print("[You have already guessed this letter].")
@@ -62,4 +65,5 @@ while not end_of_game:
 
   
     print(stages[lives])
+  
   
