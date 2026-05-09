@@ -82,4 +82,5 @@ Write the blog article now:"""
         "body": body,
         "full_text": article_text,
         "source_url": source["url"],
+        "images": source.get("images", []),
     }

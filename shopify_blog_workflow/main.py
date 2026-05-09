@@ -31,6 +31,9 @@ def main():
     print(f"\n[1/3] URLをスクレイピング中: {url}")
     source = scrape_url(url)
     print(f"      タイトル取得: {source['title']}")
+    print(f"      画像取得数: {len(source['images'])}枚")
+    if source["images"]:
+        print(f"      先頭画像: {source['images'][0]}")
 
     print(f"\n[2/3] Claude でブログ草稿を生成中 (目標: {word_count}語)...")
     draft = generate_blog_draft(source, word_count=word_count)
@@ -39,7 +42,10 @@ def main():
     print("\n[3/3] Google Docs に保存中...")
     doc_url = create_draft_doc(draft, folder_id=google_folder_id)
 
-    print(f"\n完了！\nGoogle Docs URL: {doc_url}")
+    print(f"\n完了！")
+    print(f"Google Docs URL: {doc_url}")
+    if draft.get("images"):
+        print(f"\n画像候補 ({len(draft['images'])}枚) はGoogle Docsの末尾に記載されています。")
 
 
 if __name__ == "__main__":
