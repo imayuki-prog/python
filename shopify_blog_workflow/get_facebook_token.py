@@ -20,7 +20,7 @@ load_dotenv()
 APP_ID = os.environ["META_APP_ID"]
 APP_SECRET = os.environ["META_APP_SECRET"]
 REDIRECT_URI = "http://localhost:3000/callback"
-SCOPES = "pages_manage_posts,pages_read_engagement,instagram_basic,instagram_content_publish"
+SCOPES = "pages_manage_posts,pages_read_engagement,instagram_content_publish"
 
 token_result = {}
 
