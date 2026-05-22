@@ -76,6 +76,14 @@ class CallbackHandler(BaseHTTPRequestHandler):
         )
         pages = pages_res.json().get("data", [])
 
+        # ビジネスポートフォリオ経由で取得を試みる
+        if not pages:
+            biz_res = requests.get(
+                "https://graph.facebook.com/v19.0/630338449433555/owned_pages",
+                params={"access_token": long_token, "fields": "id,name,access_token"},
+            )
+            pages = biz_res.json().get("data", [])
+
         token_result["user_token"] = long_token
         token_result["pages"] = pages
 
