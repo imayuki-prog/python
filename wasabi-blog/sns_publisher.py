@@ -47,6 +47,7 @@ def post_to_instagram(draft: dict, article_url: str):
         f"https://graph.facebook.com/v19.0/{ig_id}/media",
         data={"image_url": image_url, "caption": caption, "access_token": access_token},
     )
+    print(f"DEBUG Instagram response: {container_res.json()}")
     container_res.raise_for_status()
     container_id = container_res.json()["id"]
 
