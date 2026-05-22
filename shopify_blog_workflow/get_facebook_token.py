@@ -20,7 +20,7 @@ load_dotenv()
 APP_ID = os.environ["META_APP_ID"]
 APP_SECRET = os.environ["META_APP_SECRET"]
 REDIRECT_URI = "http://localhost:3000/callback"
-SCOPES = "pages_show_list,pages_manage_posts,pages_read_engagement,instagram_content_publish"
+SCOPES = "pages_show_list,pages_manage_posts,pages_read_engagement,instagram_content_publish,business_management"
 
 token_result = {}
 
@@ -82,6 +82,7 @@ class CallbackHandler(BaseHTTPRequestHandler):
                 "https://graph.facebook.com/v19.0/630338449433555/owned_pages",
                 params={"access_token": long_token, "fields": "id,name,access_token"},
             )
+            print(f"DEBUG biz_res: {biz_res.json()}")
             pages = biz_res.json().get("data", [])
 
         token_result["user_token"] = long_token
