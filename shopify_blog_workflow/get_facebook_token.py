@@ -157,6 +157,16 @@ def main():
         ig_account = ig_data.get("instagram_business_account", {})
         ig_id = ig_account.get("id")
 
+        # ビジネスポートフォリオ経由でInstagramアカウントを取得
+        if not ig_id:
+            biz_ig_res = requests.get(
+                "https://graph.facebook.com/v19.0/630338449433555/instagram_accounts",
+                params={"access_token": page_token, "fields": "id,username"},
+            )
+            biz_ig_data = biz_ig_res.json().get("data", [])
+            if biz_ig_data:
+                ig_id = biz_ig_data[0]["id"]
+
         if ig_id:
             print(f"INSTAGRAM_ACCOUNT_ID={ig_id}")
         else:
