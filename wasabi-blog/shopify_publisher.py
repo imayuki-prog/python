@@ -177,7 +177,8 @@ def publish_to_shopify(draft: dict, published: bool = True) -> dict:
     response.raise_for_status()
 
     article = response.json()["article"]
-    article_url = f"https://{store}/blogs/our-journal/{article['handle']}"
+    blog_domain = os.environ.get("SHOPIFY_BLOG_DOMAIN") or store
+    article_url = f"https://{blog_domain}/blogs/our-journal/{article['handle']}"
     print(f"Shopify に投稿しました: {article_url}")
     return {"article_id": article["id"], "handle": article["handle"], "url": article_url}
 
