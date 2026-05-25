@@ -409,7 +409,11 @@ with tab_seo:
 # ── プレビュー & 投稿 ─────────────────────────────────────────────────────
 with tab_preview:
     fresh = load_draft(selected_path)
-    components.html(build_html(fresh), height=780, scrolling=True)
+    try:
+        components.html(build_html(fresh), height=780, scrolling=True)
+    except Exception as e:
+        st.error(f"プレビュー描画エラー: {e}")
+        st.markdown(fresh.get("full_text", ""), unsafe_allow_html=False)
 
     st.divider()
     col_surge, col_shopify = st.columns(2)
