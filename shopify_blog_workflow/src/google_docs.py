@@ -23,8 +23,13 @@ def create_draft_doc(draft: dict, folder_id: str = None) -> str:
     doc = docs_service.documents().create(body={"title": f"[DRAFT] {draft['title']}"}).execute()
     doc_id = doc["documentId"]
 
-    # 本文を書き込む
-    full_text = f"{draft['title']}\n\n{draft['body']}\n\n---\nSource: {draft['source_url']}"
+    # 本文を書き込む（画像URLがあれば記載）
+    images_section = ""
+    if draft.get("images"):
+        image_lines = "\n".join(f"  {i+1}. {url}" for i, url in enumerate(draft["images"]))
+        images_section = f"\n\n--- 画像候補（Shopify投稿時に使用） ---\n{image_lines}"
+
+    full_text = f"{draft['title']}\n\n{draft['body']}\n\n---\nSource: {draft['source_url']}{images_section}"
     docs_service.documents().batchUpdate(
         documentId=doc_id,
         body={
