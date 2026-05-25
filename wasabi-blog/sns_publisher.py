@@ -34,7 +34,7 @@ def post_to_facebook(draft: dict, article_url: str):
 
 def post_to_instagram(draft: dict, article_url: str):
     ig_id = os.environ["INSTAGRAM_ACCOUNT_ID"]
-    access_token = os.environ["META_ACCESS_TOKEN"]
+    access_token = os.environ.get("META_USER_ACCESS_TOKEN") or os.environ["META_ACCESS_TOKEN"]
     image_url = (draft.get("images") or [None])[0]
 
     if not image_url:
