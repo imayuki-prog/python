@@ -1,4 +1,5 @@
 """wasabi-blog ローカル管理アプリ"""
+import os
 import re
 import shutil
 import subprocess
@@ -28,6 +29,16 @@ load_dotenv()
 st.set_page_config(page_title="wasabi-blog", layout="wide", page_icon="🍱")
 
 # ── ヘルパー ──────────────────────────────────────────────────────────────
+
+def _normalize_published_url(url: str) -> str:
+    if not url:
+        return url
+    blog_domain = os.environ.get("SHOPIFY_BLOG_DOMAIN")
+    store = os.environ.get("SHOPIFY_STORE", "")
+    if blog_domain and store and store in url:
+        return url.replace(f"https://{store}", f"https://{blog_domain}")
+    return url
+
 
 def _parse_file(path: Path):
     text = path.read_text(encoding="utf-8")
@@ -306,7 +317,7 @@ with tab_list:
         rows.append({
             "ブランドURL":    d["source_url"],
             "プレビューURL":  d.get("preview_url") or "",
-            "公開URL":        d.get("published_url") or "",
+            "公開URL":        _normalize_published_url(d.get("published_url") or ""),
             "承認":           appr.get("status", "未確認"),
             "確認申請日":     appr.get("requested_date", ""),
             "承認日":         appr.get("approved_date", ""),
@@ -418,7 +429,8 @@ with tab_preview:
 
     with col_shopify:
         if fresh["status"] == "published":
-            st.markdown(f"[Shopify記事を開く →]({fresh['published_url']})")
+            pub_url = _normalize_published_url(fresh['published_url'])
+            st.markdown(f"[Shopify記事を開く →]({pub_url})")
             st.divider()
             if st.button("↩️ 下書きに戻す", use_container_width=True):
                 with st.spinner("処理中..."):
@@ -459,7 +471,7 @@ with tab_preview:
                 with st.spinner("投稿中..."):
                     try:
                         from sns_publisher import post_to_facebook
-                        post_to_facebook(fresh, fresh["published_url"])
+                        post_to_facebook(fresh, _normalize_published_url(fresh["published_url"]))
                         st.success("✅ Facebook投稿完了!")
                     except Exception as e:
                         st.error(f"エラー: {e}")
