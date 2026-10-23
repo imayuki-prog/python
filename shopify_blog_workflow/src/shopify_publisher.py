@@ -1,6 +1,12 @@
+import html
 import os
 import re
 import requests
+
+
+def _esc(text) -> str:
+    """HTML に埋め込む値をエスケープする（外部サイト由来の文章に含まれるタグを無効化）"""
+    return html.escape(str(text or ""), quote=True)
 
 
 def _markdown_to_html(text: str) -> str:
@@ -14,27 +20,27 @@ def _markdown_to_html(text: str) -> str:
             if in_ul:
                 html_lines.append("</ul>")
                 in_ul = False
-            html_lines.append(f"<h1>{line[2:].strip()}</h1>")
+            html_lines.append(f"<h1>{_esc(line[2:].strip())}</h1>")
         elif line.startswith("## "):
             if in_ul:
                 html_lines.append("</ul>")
                 in_ul = False
-            html_lines.append(f"<h2>{line[3:].strip()}</h2>")
+            html_lines.append(f"<h2>{_esc(line[3:].strip())}</h2>")
         elif line.startswith("### "):
             if in_ul:
                 html_lines.append("</ul>")
                 in_ul = False
-            html_lines.append(f"<h3>{line[4:].strip()}</h3>")
+            html_lines.append(f"<h3>{_esc(line[4:].strip())}</h3>")
         elif line.startswith("- "):
             if not in_ul:
                 html_lines.append("<ul>")
                 in_ul = True
-            html_lines.append(f"<li>{line[2:].strip()}</li>")
+            html_lines.append(f"<li>{_esc(line[2:].strip())}</li>")
         elif line.startswith("> "):
             if in_ul:
                 html_lines.append("</ul>")
                 in_ul = False
-            html_lines.append(f"<blockquote><p>{line[2:].strip()}</p></blockquote>")
+            html_lines.append(f"<blockquote><p>{_esc(line[2:].strip())}</p></blockquote>")
         elif line.strip() == "---":
             if in_ul:
                 html_lines.append("</ul>")
@@ -48,7 +54,8 @@ def _markdown_to_html(text: str) -> str:
             if in_ul:
                 html_lines.append("</ul>")
                 in_ul = False
-            # インライン装飾
+            # インライン装飾（先にエスケープしてからタグを付与する）
+            line = _esc(line)
             line = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", line)
             line = re.sub(r"\*(.+?)\*", r"<em>\1</em>", line)
             line = re.sub(r"_(.+?)_", r"<em>\1</em>", line)

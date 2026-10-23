@@ -13,9 +13,11 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 import re
+from urllib.parse import urlparse
 
-from draft_manager import list_drafts, load_draft, mark_published
+from draft_manager import list_drafts, load_draft, mark_published, save_preview_url
 from shopify_publisher import publish_to_shopify
+from surge_preview import teardown
 
 
 def _prompt_cta(draft_path: Path, draft: dict) -> dict:
@@ -81,6 +83,14 @@ def main():
 
     result = publish_to_shopify(draft, published=True)
     mark_published(draft_path, result["url"])
+
+    # 公開後は不要になった Surge プレビューを削除する
+    if draft.get("preview_url"):
+        if teardown(draft["preview_url"]):
+            save_preview_url(draft_path, None)
+            print(f"Surge プレビューを削除しました: {draft['preview_url']}")
+        else:
+            print(f"⚠️ Surge プレビューを削除できませんでした。手動で削除してください: surge teardown {urlparse(draft['preview_url']).hostname}")
 
     print(f"\n完了!")
     print(f"Shopify URL: {result['url']}")

@@ -1,11 +1,13 @@
 import os
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 
 
+# drive.file: このアプリが作成したファイルだけにアクセスできる（Drive 全体は見えない）
 SCOPES = [
     "https://www.googleapis.com/auth/documents",
-    "https://www.googleapis.com/auth/drive",
+    "https://www.googleapis.com/auth/drive.file",
 ]
 
 
@@ -46,14 +48,21 @@ def create_draft_doc(draft: dict, folder_id: str = None) -> str:
 
     # フォルダに移動（指定がある場合）
     if folder_id:
-        file = drive_service.files().get(fileId=doc_id, fields="parents").execute()
-        previous_parents = ",".join(file.get("parents", []))
-        drive_service.files().update(
-            fileId=doc_id,
-            addParents=folder_id,
-            removeParents=previous_parents,
-            fields="id, parents",
-        ).execute()
+        try:
+            file = drive_service.files().get(fileId=doc_id, fields="parents").execute()
+            previous_parents = ",".join(file.get("parents", []))
+            drive_service.files().update(
+                fileId=doc_id,
+                addParents=folder_id,
+                removeParents=previous_parents,
+                fields="id, parents",
+            ).execute()
+        except HttpError as e:
+            # 草稿生成のコストを無駄にしないよう、移動に失敗してもドキュメントURLは返す
+            print(
+                f"⚠️ フォルダへの移動に失敗しました（{e.status_code}）。"
+                "フォルダをサービスアカウントと「編集者」で共有しているか確認してください。"
+            )
 
     doc_url = f"https://docs.google.com/document/d/{doc_id}/edit"
     print(f"Google Docs に保存しました: {doc_url}")

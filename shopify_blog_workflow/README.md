@@ -31,6 +31,9 @@ cp .env.example .env
 4. JSONファイルを `credentials/google_service_account.json` に配置
 5. 保存先のGoogle Driveフォルダーをサービスアカウントのメールアドレスと共有
 
+> このツールは `drive.file` 権限（自分で作成したファイルだけにアクセス）で動作し、Drive 全体にはアクセスしません。
+> フォルダーへの移動に失敗した場合は、フォルダーをサービスアカウントと「編集者」権限で共有しているか確認してください。
+
 ### 実行方法
 
 ```bash

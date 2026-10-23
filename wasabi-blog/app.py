@@ -1,9 +1,6 @@
 """wasabi-blog ローカル管理アプリ"""
 import os
 import re
-import shutil
-import subprocess
-import tempfile
 from pathlib import Path
 
 import pandas as pd
@@ -22,7 +19,15 @@ from brand_manager import (
     write_next_task,
 )
 from draft_manager import list_drafts, load_draft, mark_published, mark_unpublished, save_preview_url, save_approval
-from shopify_publisher import _build_faq_jsonld, _markdown_to_html, publish_to_shopify, unpublish_article
+from shopify_publisher import (
+    _build_faq_jsonld,
+    _esc,
+    _markdown_to_html,
+    build_cta_html,
+    publish_to_shopify,
+    unpublish_article,
+)
+from surge_preview import NOINDEX_META, deploy, preview_domain, teardown, teardown_if_replaced
 
 load_dotenv()
 
@@ -71,7 +76,6 @@ def update_seo_cta(path: Path, cta_url: str, cta_text: str, meta_desc: str, keyw
 
 def build_html(draft: dict) -> str:
     seo = draft.get("seo") or {}
-    cta = draft.get("cta") or {}
     image_alts = seo.get("image_alts") or []
 
     body_html = _markdown_to_html(
@@ -80,13 +84,7 @@ def build_html(draft: dict) -> str:
         image_alts=image_alts,
     )
 
-    if cta.get("url") and cta.get("text"):
-        body_html += (
-            '\n<div style="text-align:center;margin:2.5em 0;">'
-            f'<a href="{cta["url"]}" style="display:inline-block;padding:14px 32px;'
-            f'background:#1a1a1a;color:#fff;text-decoration:none;border-radius:4px;'
-            f'font-weight:600;letter-spacing:0.03em;">{cta["text"]}</a></div>'
-        )
+    body_html += build_cta_html(draft.get("cta"))
 
     faq_jsonld = _build_faq_jsonld(draft["full_text"])
 
@@ -95,8 +93,9 @@ def build_html(draft: dict) -> str:
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{draft['title']}</title>
-  <meta name="description" content="{seo.get('meta_description', '')}">
+  {NOINDEX_META}
+  <title>{_esc(draft['title'])}</title>
+  <meta name="description" content="{_esc(seo.get('meta_description', ''))}">
   {faq_jsonld}
   <style>
     *{{box-sizing:border-box;margin:0;padding:0;}}
@@ -117,26 +116,17 @@ def build_html(draft: dict) -> str:
 </html>"""
 
 
-def _to_domain(path: Path) -> str:
-    stem = path.stem.replace("_", "-")[:56].rstrip("-")
-    return f"wasabi-{stem}.surge.sh"
-
-
 def deploy_surge(draft: dict, path: Path):
-    html = build_html(draft)
-    tmpdir = tempfile.mkdtemp(prefix="wasabi-app-")
+    old_preview_url = draft.get("preview_url")
+    domain = preview_domain(path, old_preview_url)
     try:
-        (Path(tmpdir) / "index.html").write_text(html, encoding="utf-8")
-        domain = _to_domain(path)
-        result = subprocess.run(
-            ["surge", tmpdir, domain],
-            capture_output=True, text=True, timeout=60,
-        )
-        return result.returncode == 0, f"https://{domain}"
+        result = deploy(build_html(draft), domain, capture_output=True)
     except Exception as e:
         return False, str(e)
-    finally:
-        shutil.rmtree(tmpdir, ignore_errors=True)
+    if result.returncode != 0:
+        return False, (result.stderr or result.stdout or "surge の実行に失敗しました").strip()
+    teardown_if_replaced(old_preview_url, domain)
+    return True, f"https://{domain}"
 
 
 # ── サイドバー ────────────────────────────────────────────────────────────
@@ -212,9 +202,12 @@ with tab_brands:
     with col_new_btn:
         st.markdown("<div style='margin-top:28px'>", unsafe_allow_html=True)
         if st.button("＋ 追加", use_container_width=True) and new_brand_slug.strip():
-            create_brand(new_brand_slug.strip())
-            st.success(f"「{new_brand_slug.strip()}」を追加しました")
-            st.rerun()
+            try:
+                create_brand(new_brand_slug.strip())
+                st.success(f"「{new_brand_slug.strip()}」を追加しました")
+                st.rerun()
+            except ValueError as e:
+                st.error(str(e))
         st.markdown("</div>", unsafe_allow_html=True)
 
     if not selected_brand:
@@ -451,6 +444,9 @@ with tab_preview:
                     try:
                         result = publish_to_shopify(fresh, published=True)
                         mark_published(selected_path, result["url"])
+                        # 公開後は不要になった Surge プレビューを削除する
+                        if fresh.get("preview_url") and teardown(fresh["preview_url"]):
+                            save_preview_url(selected_path, None)
                         st.success("投稿完了!")
                         st.markdown(f"[Shopify記事を開く →]({result['url']})")
                         st.rerun()

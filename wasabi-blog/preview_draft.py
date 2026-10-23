@@ -5,20 +5,19 @@
 使い方:
   python preview_draft.py drafts/YYYY-MM-DD_slug.md
 """
-import shutil
-import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
-from draft_manager import load_draft
-from shopify_publisher import _build_faq_jsonld, _markdown_to_html
+from draft_manager import load_draft, save_preview_url
+from shopify_publisher import _build_faq_jsonld, _esc, _markdown_to_html, _safe_url, build_cta_html
+from surge_preview import NOINDEX_META, deploy, preview_domain, teardown_if_replaced
 
 HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  {noindex_meta}
   <title>{title}</title>
   <meta name="description" content="{meta_description}">
   <meta name="keywords" content="{keywords}">
@@ -121,12 +120,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 </html>"""
 
 
-def _draft_to_domain(draft_path: Path) -> str:
-    # DNS label max = 63 chars. prefix "wasabi-" = 7 chars → 56 chars remaining
-    stem = draft_path.stem.replace("_", "-")[:56].rstrip("-")
-    return f"wasabi-{stem}.surge.sh"
-
-
 def main():
     if len(sys.argv) < 2:
         print("使い方: python preview_draft.py drafts/YYYY-MM-DD_slug.md")
@@ -148,46 +141,33 @@ def main():
     )
 
     # CTA ボタン
-    cta = draft.get("cta") or {}
-    if cta.get("url") and cta.get("text"):
-        body_html += (
-            '\n<div style="text-align:center;margin:2.5em 0;">'
-            f'<a href="{cta["url"]}" '
-            f'style="display:inline-block;padding:14px 32px;background:#1a1a1a;color:#fff;'
-            f'text-decoration:none;border-radius:4px;font-weight:600;letter-spacing:0.03em;">'
-            f'{cta["text"]}</a></div>'
-        )
+    body_html += build_cta_html(draft.get("cta"))
 
     faq_jsonld = _build_faq_jsonld(draft["full_text"])
 
     html = HTML_TEMPLATE.format(
-        title=draft["title"],
-        meta_description=seo.get("meta_description", ""),
-        keywords=", ".join(seo.get("keywords") or []),
+        noindex_meta=NOINDEX_META,
+        title=_esc(draft["title"]),
+        meta_description=_esc(seo.get("meta_description", "")),
+        keywords=_esc(", ".join(seo.get("keywords") or [])),
         faq_jsonld=faq_jsonld,
-        source_url=draft["source_url"],
-        created=draft["created"],
+        source_url=_safe_url(draft["source_url"]),
+        created=_esc(draft["created"]),
         body_html=body_html,
     )
 
-    # 一時ディレクトリにHTMLを書き出す
-    tmpdir = tempfile.mkdtemp(prefix="wasabi-preview-")
-    html_path = Path(tmpdir) / "index.html"
-    html_path.write_text(html, encoding="utf-8")
-
-    domain = _draft_to_domain(draft_path)
+    old_preview_url = draft.get("preview_url")
+    domain = preview_domain(draft_path, old_preview_url)
     url = f"https://{domain}"
 
     print(f"\nデプロイ中: {url}")
-    result = subprocess.run(
-        ["surge", tmpdir, domain],
-        capture_output=False,
-    )
-
-    shutil.rmtree(tmpdir, ignore_errors=True)
+    result = deploy(html, domain)
 
     if result.returncode == 0:
+        save_preview_url(draft_path, url)
+        teardown_if_replaced(old_preview_url, domain)
         print(f"\n共有URL: {url}")
+        print("（URLを知っている人だけが閲覧できます。Shopify に投稿すると自動で削除されます）")
     else:
         print("\nデプロイに失敗しました。`surge login` を実行済みか確認してください。")
         sys.exit(1)

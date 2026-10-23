@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Edit(./.env)",
+      "Edit(./.env.*)",
+      "Bash(surge:*)",
+      "Bash(npx surge:*)",
+      "Bash(python publish_draft.py:*)",
+      "Bash(python3 publish_draft.py:*)",
+      "Bash(venv/bin/python publish_draft.py:*)",
+      "Bash(python preview_draft.py:*)",
+      "Bash(python3 preview_draft.py:*)",
+      "Bash(venv/bin/python preview_draft.py:*)"
+    ]
+  }
+}
